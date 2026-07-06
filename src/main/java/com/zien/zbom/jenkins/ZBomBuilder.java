@@ -27,6 +27,7 @@ import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.interceptor.RequirePOST;
 
 public class ZBomBuilder extends Builder implements SimpleBuildStep {
     private final String serverUrl;
@@ -115,7 +116,7 @@ public class ZBomBuilder extends Builder implements SimpleBuildStep {
 
         ZBomScanConfig config = new ZBomScanConfig();
         config.serverUrl = resolveUrl(env.expand(serverUrl), run, "serverUrl");
-        config.token = credentials.getSecret().getPlainText();
+        config.token = credentials.getSecret();
         config.type = env.expand(type).toLowerCase(Locale.ROOT);
         config.source = ".";
         config.repo = valueOrEnv(env.get("JOB_NAME"), env.get("GIT_URL"), "unknown");
@@ -222,6 +223,7 @@ public class ZBomBuilder extends Builder implements SimpleBuildStep {
             return "Run Z-BOM scan";
         }
 
+        @RequirePOST
         public ListBoxModel doFillServerUrlItems(
                 @AncestorInPath Item context,
                 @QueryParameter String serverUrl) {
@@ -236,6 +238,7 @@ public class ZBomBuilder extends Builder implements SimpleBuildStep {
             return model;
         }
 
+        @RequirePOST
         public ListBoxModel doFillCredentialsIdItems(
                 @AncestorInPath Item context,
                 @QueryParameter String credentialsId) {
@@ -250,6 +253,7 @@ public class ZBomBuilder extends Builder implements SimpleBuildStep {
             return model;
         }
 
+        @RequirePOST
         public ListBoxModel doFillWebUrlItems(
                 @AncestorInPath Item context,
                 @QueryParameter String webUrl) {
@@ -281,7 +285,11 @@ public class ZBomBuilder extends Builder implements SimpleBuildStep {
             return model;
         }
 
-        public FormValidation doCheckServerUrl(@QueryParameter String value) {
+        @RequirePOST
+        public FormValidation doCheckServerUrl(@AncestorInPath Item context, @QueryParameter String value) {
+            if (context == null || !context.hasPermission(Item.CONFIGURE)) {
+                return FormValidation.ok();
+            }
             if (value == null || value.isBlank()) {
                 return FormValidation.error("Z-BOM server URL or Secret text credential ID is required");
             }

@@ -196,7 +196,7 @@ final class ZBomRemoteScanner extends MasterToSlaveFileCallable<ZBomScanResult> 
     private HttpRequest.Builder requestBuilder(String url, int timeoutSeconds) {
         return HttpRequest.newBuilder(URI.create(url))
                 .timeout(Duration.ofSeconds(timeoutSeconds))
-                .header("Authorization", "Token " + config.token)
+                .header("Authorization", "Token " + config.token.getPlainText())
                 .header("Accept", "application/json")
                 .header("User-Agent", "Z-BOM-Jenkins/0.1");
     }

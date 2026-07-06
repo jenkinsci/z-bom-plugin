@@ -1,5 +1,6 @@
 package com.zien.zbom.jenkins;
 
+import hudson.util.Secret;
 import java.io.Serial;
 import java.io.Serializable;
 
@@ -8,7 +9,7 @@ final class ZBomScanConfig implements Serializable {
     private static final long serialVersionUID = 1L;
 
     String serverUrl;
-    String token;
+    Secret token;
     String type;
     String source;
     String repo;
