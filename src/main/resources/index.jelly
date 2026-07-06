@@ -1,5 +1,4 @@
 <?jelly escape-by-default='true'?>
 <div>
-    Submits source to your on-premises Z-BOM service for SBOM/CVE analysis
-    and reports the results on the build. Requires a self-hosted Z-BOM deployment.
+  Z-BOM integration plugin.
 </div>

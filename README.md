@@ -1,36 +1,101 @@
-# Z-BOM SBOM Checker (Jenkins Plugin)
+# Z-BOM Plugin
 
-Submits your project's git-tracked source to a **self-hosted (on-premises) Z-BOM instance** for SBOM/CVE analysis and reports the results on the build. This plugin is a *client* for Z-BOM — it requires a Z-BOM deployment reachable from your Jenkins controller/agents and does **not** work standalone.
+Uploads the current Jenkins workspace to Z-BOM through the CI scan API, waits for the analysis result, prints a summary in the build log, and optionally fails the build by CVE severity.
 
-> ⚠️ **Status: under development.** Not yet published to the Jenkins Update Center.
+## Requirements
 
-## Planned usage
+- Jenkins 2.479.3 or newer
+- Java 17 or newer
+- Jenkins credentials:
+  - `Z_BOM_URL`: Secret text containing the Z-BOM API URL reachable from the Jenkins agent
+  - `Z_BOM_TOKEN`: Secret text containing the Z-BOM CI token
+  - `Z_BOM_WEB_URL`: optional Secret text containing the browser-facing Z-BOM URL for report links
 
-Pipeline step:
+The plugin creates the source ZIP, sends HTTP requests, parses JSON, and polls from inside the Jenkins agent JVM. The agent does not need `curl`, `jq`, Python, or zip.
+
+## Pipeline Usage
 
 ```groovy
-zbomScan url: 'https://z-bom.internal.example',
-         credentialsId: 'z-bom-ci-token',   // Secret text credential
-         type: 'code',                      // code | firmware
-         failOn: 'high'                     // critical | high | medium | low | none
+pipeline {
+    agent any
+
+    stages {
+        stage('Z-BOM Scan') {
+            steps {
+                zbomScan(
+                    serverUrl: 'Z_BOM_URL',
+                    credentialsId: 'Z_BOM_TOKEN',
+                    type: 'code',
+                    failOn: 'none',
+                    timeoutSeconds: 1800,
+                    intervalSeconds: 10,
+                    webUrl: 'Z_BOM_WEB_URL'
+                )
+            }
+        }
+    }
+}
 ```
 
-The step archives the workspace's git-tracked source, submits it to `POST /api/ci/scan`, polls until the analysis completes, and publishes a summary (component counts, CVE severity breakdown, link to the full report on your Z-BOM console). `failOn` marks the build as failed when CVEs at or above the given severity are found.
+`serverUrl`, `credentialsId`, and `webUrl` may be either literal HTTP(S) URLs or Jenkins Secret text credential IDs. `credentialsId` is always used as the Z-BOM token credential ID.
 
-## Prerequisites
+## Minimal Usage
 
-- An on-premises Z-BOM deployment. For Z-BOM itself, contact [ZIEN](https://zi-en.io).
-- A Z-BOM CI token (issued from Z-BOM's CI/CD integration settings), stored as a Jenkins *Secret text* credential.
-- Network access from the Jenkins agent to the Z-BOM server.
+```groovy
+zbomScan(
+    serverUrl: 'Z_BOM_URL',
+    credentialsId: 'Z_BOM_TOKEN'
+)
+```
 
-## See also
+Defaults:
 
-- GitHub Actions equivalent: [Z-BOM SBOM Checker on the GitHub Marketplace](https://github.com/marketplace/actions/z-bom-sbom-checker)
+- `type`: `code`
+- `failOn`: `none`
+- `timeoutSeconds`: `1800`
+- `intervalSeconds`: `10`
+- `webUrl`: same value as `serverUrl`
 
-## Contributing
+## Options
 
-Refer to the Jenkins community [contribution guidelines](https://github.com/jenkinsci/.github/blob/master/CONTRIBUTING.md).
+- `serverUrl`: Z-BOM API URL or Secret text credential ID. Required.
+- `credentialsId`: Secret text credential ID for the Z-BOM token. Required.
+- `type`: `code` or `firmware`.
+- `failOn`: `none`, `critical`, `high`, `medium`, or `low`.
+- `timeoutSeconds`: maximum wait time for analysis completion.
+- `intervalSeconds`: polling interval.
+- `webUrl`: optional report-link base URL or Secret text credential ID.
 
-## License
+`failOn` behavior:
 
-Licensed under MIT, see [LICENSE](LICENSE.md).
+- `none`: never fail because of CVE counts
+- `critical`: fail if Critical CVEs exist
+- `high`: fail if Critical or High CVEs exist
+- `medium`: fail if Critical, High, or Medium CVEs exist
+- `low`: fail if Critical, High, Medium, or Low CVEs exist
+
+## Network Notes
+
+The API calls run on the Jenkins agent that owns the workspace. If Jenkins runs in Docker and Z-BOM runs on the host machine, `localhost` usually points to the Jenkins container, not the host. Use a URL reachable from the agent, for example:
+
+```text
+http://host.docker.internal:8000
+```
+
+## Build
+
+```bash
+mvn clean verify
+```
+
+The installable plugin is generated at:
+
+```text
+target/z-bom.hpi
+```
+
+For local development:
+
+```bash
+mvn hpi:run
+```

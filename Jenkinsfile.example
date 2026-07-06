@@ -1,0 +1,25 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Z-BOM Scan') {
+            steps {
+                zbomScan(
+                    serverUrl: 'Z_BOM_URL',
+                    credentialsId: 'Z_BOM_TOKEN',
+                    type: 'code',
+                    failOn: 'none',
+                    timeoutSeconds: 1800,
+                    intervalSeconds: 10,
+                    webUrl: 'Z_BOM_WEB_URL'
+                )
+            }
+        }
+    }
+}
