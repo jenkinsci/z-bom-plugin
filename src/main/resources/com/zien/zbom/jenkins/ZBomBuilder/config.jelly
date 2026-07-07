@@ -1,10 +1,10 @@
 <?jelly escape-by-default='true'?>
-<j:jelly xmlns:j="jelly:core" xmlns:f="lib/form">
-  <f:entry title="Z-BOM server URL or credential ID" field="serverUrl">
-    <f:select/>
+<j:jelly xmlns:j="jelly:core" xmlns:f="lib/form" xmlns:c="/lib/credentials">
+  <f:entry title="Z-BOM server URL" field="serverUrl">
+    <f:textbox/>
   </f:entry>
   <f:entry title="Z-BOM API token" field="credentialsId">
-    <f:select/>
+    <c:select/>
   </f:entry>
   <f:entry title="Scan type" field="type">
     <f:select/>
@@ -12,16 +12,16 @@
   <f:entry title="Fail policy" field="failOn">
     <f:select/>
   </f:entry>
-  <f:entry title="Z-BOM web URL or credential ID" field="webUrl">
-    <f:select/>
+  <f:entry title="Z-BOM web URL" field="webUrl">
+    <f:textbox/>
   </f:entry>
 
   <f:advanced>
     <f:entry title="Timeout (seconds)" field="timeoutSeconds">
-      <f:number min="1"/>
+      <f:number clazz="required positive-number"/>
     </f:entry>
     <f:entry title="Polling interval (seconds)" field="intervalSeconds">
-      <f:number min="1"/>
+      <f:number clazz="required positive-number"/>
     </f:entry>
   </f:advanced>
 </j:jelly>

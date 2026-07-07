@@ -115,7 +115,7 @@ public class ZBomBuilder extends Builder implements SimpleBuildStep {
         }
 
         ZBomScanConfig config = new ZBomScanConfig();
-        config.serverUrl = resolveUrl(env.expand(serverUrl), run, "serverUrl");
+        config.serverUrl = env.expand(serverUrl).trim();
         config.token = credentials.getSecret();
         config.type = env.expand(type).toLowerCase(Locale.ROOT);
         config.source = ".";
@@ -127,7 +127,7 @@ public class ZBomBuilder extends Builder implements SimpleBuildStep {
         config.timeoutSeconds = timeoutSeconds;
         config.intervalSeconds = intervalSeconds;
         config.failOn = env.expand(failOn).toLowerCase(Locale.ROOT);
-        config.webUrl = resolveUrl(valueOrEnv(env.expand(webUrl), config.serverUrl, ""), run, "webUrl");
+        config.webUrl = valueOrEnv(env.expand(webUrl), config.serverUrl, "").trim();
         validateExpandedSettings(config);
 
         listener.getLogger().printf(
@@ -173,17 +173,9 @@ public class ZBomBuilder extends Builder implements SimpleBuildStep {
         if (!isHttpUrl(config.serverUrl)) {
             throw new AbortException("serverUrl must be an absolute HTTP or HTTPS URL");
         }
-    }
-
-    private static String resolveUrl(String value, Run<?, ?> run, String fieldName) throws AbortException {
-        if (isHttpUrl(value)) {
-            return value;
+        if (!config.webUrl.isBlank() && !isHttpUrl(config.webUrl)) {
+            throw new AbortException("webUrl must be an absolute HTTP or HTTPS URL");
         }
-        StringCredentials credentials = CredentialsProvider.findCredentialById(value, StringCredentials.class, run);
-        if (credentials == null) {
-            throw new AbortException(fieldName + " must be an HTTP(S) URL or Secret text credential ID: " + value);
-        }
-        return credentials.getSecret().getPlainText().trim();
     }
 
     private static boolean isHttpUrl(String value) {
@@ -224,21 +216,6 @@ public class ZBomBuilder extends Builder implements SimpleBuildStep {
         }
 
         @RequirePOST
-        public ListBoxModel doFillServerUrlItems(
-                @AncestorInPath Item context,
-                @QueryParameter String serverUrl) {
-            StandardListBoxModel model = new StandardListBoxModel();
-            model.includeEmptyValue();
-            if (context == null || !context.hasPermission(Item.CONFIGURE)) {
-                model.includeCurrentValue(serverUrl);
-                return model;
-            }
-            model.include(context, StringCredentials.class);
-            model.includeCurrentValue(serverUrl);
-            return model;
-        }
-
-        @RequirePOST
         public ListBoxModel doFillCredentialsIdItems(
                 @AncestorInPath Item context,
                 @QueryParameter String credentialsId) {
@@ -250,21 +227,6 @@ public class ZBomBuilder extends Builder implements SimpleBuildStep {
             }
             model.include(context, StringCredentials.class);
             model.includeCurrentValue(credentialsId);
-            return model;
-        }
-
-        @RequirePOST
-        public ListBoxModel doFillWebUrlItems(
-                @AncestorInPath Item context,
-                @QueryParameter String webUrl) {
-            StandardListBoxModel model = new StandardListBoxModel();
-            model.includeEmptyValue();
-            if (context == null || !context.hasPermission(Item.CONFIGURE)) {
-                model.includeCurrentValue(webUrl);
-                return model;
-            }
-            model.include(context, StringCredentials.class);
-            model.includeCurrentValue(webUrl);
             return model;
         }
 
@@ -291,19 +253,9 @@ public class ZBomBuilder extends Builder implements SimpleBuildStep {
                 return FormValidation.ok();
             }
             if (value == null || value.isBlank()) {
-                return FormValidation.error("Z-BOM server URL or Secret text credential ID is required");
+                return FormValidation.error("Z-BOM server URL is required");
             }
-            return isHttpUrl(value.trim())
-                    ? FormValidation.ok()
-                    : FormValidation.ok("Will resolve as a Secret text credential ID");
-        }
-
-        public FormValidation doCheckTimeoutSeconds(@QueryParameter int value) {
-            return value > 0 ? FormValidation.ok() : FormValidation.error("Must be greater than zero");
-        }
-
-        public FormValidation doCheckIntervalSeconds(@QueryParameter int value) {
-            return value > 0 ? FormValidation.ok() : FormValidation.error("Must be greater than zero");
+            return isHttpUrl(value.trim()) ? FormValidation.ok() : FormValidation.error("Must be an HTTP or HTTPS URL");
         }
     }
 }
