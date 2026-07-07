@@ -81,7 +81,9 @@ final class ZBomRemoteScanner extends MasterToSlaveFileCallable<ZBomScanResult> 
             result.totalCve = intValue(scanResult, "totalCve", 0);
             result.sbomCount = intValue(scanResult, "sbomCount", 0);
             result.hbomCount = intValue(scanResult, "hbomCount", 0);
-            result.projectId = stringValue(scanResult, "projectId", "");
+            result.projectId = valueOrEmpty(
+                    stringValue(scanResult, "inspectionId", ""),
+                    stringValue(scanResult, "projectId", ""));
             result.policyExitCode = policyExitCode(result);
 
             log.append(summaryMarkdown(result));
@@ -172,7 +174,7 @@ final class ZBomRemoteScanner extends MasterToSlaveFileCallable<ZBomScanResult> 
                 .append(" (total ").append(result.totalCve).append(") |\n");
         if (!isBlank(result.projectId)) {
             out.append("\nReport: ").append(stripTrailingSlash(config.webUrl))
-                    .append("/project/").append(result.projectId).append("/summary\n");
+                    .append("/inspection/").append(result.projectId).append("/summary\n");
         }
         return out.append('\n').toString();
     }
@@ -345,6 +347,10 @@ final class ZBomRemoteScanner extends MasterToSlaveFileCallable<ZBomScanResult> 
             throw new IOException(message);
         }
         return value;
+    }
+
+    private static String valueOrEmpty(String first, String second) {
+        return isBlank(first) ? second : first;
     }
 
     private static int intValue(JSONObject object, String key, int fallback) {
