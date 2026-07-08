@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serial;
 import java.net.URI;
+import java.net.ProxySelector;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -204,10 +205,14 @@ final class ZBomRemoteScanner extends MasterToSlaveFileCallable<ZBomScanResult> 
     }
 
     private String send(HttpRequest request) throws IOException, InterruptedException {
-        HttpClient client = HttpClient.newBuilder()
+        HttpClient.Builder builder = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(30))
-                .followRedirects(HttpClient.Redirect.NORMAL)
-                .build();
+                .followRedirects(HttpClient.Redirect.NORMAL);
+        ProxySelector proxySelector = ProxySelector.getDefault();
+        if (proxySelector != null) {
+            builder.proxy(proxySelector);
+        }
+        HttpClient client = builder.build();
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         int statusCode = response.statusCode();
         if (statusCode < 200 || statusCode >= 300) {

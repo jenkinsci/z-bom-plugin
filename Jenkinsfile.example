@@ -11,13 +11,13 @@ pipeline {
         stage('Z-BOM Scan') {
             steps {
                 zbomScan(
-                    serverUrl: 'Z_BOM_URL',
+                    serverUrl: 'https://zbom.example.com',
                     credentialsId: 'Z_BOM_TOKEN',
                     type: 'code',
                     failOn: 'none',
                     timeoutSeconds: 1800,
                     intervalSeconds: 10,
-                    webUrl: 'Z_BOM_WEB_URL'
+                    webUrl: 'https://zbom.example.com'
                 )
             }
         }
