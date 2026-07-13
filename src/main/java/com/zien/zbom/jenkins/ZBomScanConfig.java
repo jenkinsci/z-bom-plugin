@@ -1,5 +1,6 @@
 package com.zien.zbom.jenkins;
 
+import hudson.ProxyConfiguration;
 import hudson.util.Secret;
 import java.io.Serial;
 import java.io.Serializable;
@@ -10,6 +11,7 @@ final class ZBomScanConfig implements Serializable {
 
     String serverUrl;
     Secret token;
+    ProxyConfiguration proxy;
     String type;
     String source;
     String repo;

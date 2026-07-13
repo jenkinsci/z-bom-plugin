@@ -1,12 +1,19 @@
 package com.zien.zbom.jenkins;
 
+import hudson.ProxyConfiguration;
+import hudson.util.Secret;
 import hudson.remoting.VirtualChannel;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serial;
+import java.net.Authenticator;
+import java.net.InetSocketAddress;
+import java.net.PasswordAuthentication;
+import java.net.Proxy;
 import java.net.URI;
 import java.net.ProxySelector;
+import java.net.SocketAddress;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -20,6 +27,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -208,10 +216,7 @@ final class ZBomRemoteScanner extends MasterToSlaveFileCallable<ZBomScanResult> 
         HttpClient.Builder builder = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(30))
                 .followRedirects(HttpClient.Redirect.NORMAL);
-        ProxySelector proxySelector = ProxySelector.getDefault();
-        if (proxySelector != null) {
-            builder.proxy(proxySelector);
-        }
+        applyProxy(builder);
         HttpClient client = builder.build();
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         int statusCode = response.statusCode();
@@ -220,6 +225,27 @@ final class ZBomRemoteScanner extends MasterToSlaveFileCallable<ZBomScanResult> 
                     + statusCode + " " + abbreviate(response.body()));
         }
         return response.body();
+    }
+
+    private void applyProxy(HttpClient.Builder builder) {
+        ProxyConfiguration proxy = config.proxy;
+        if (proxy == null || proxy.getName() == null) {
+            return;
+        }
+        builder.proxy(new ZBomProxySelector(proxy.getName(), proxy.getPort(), proxy.getNoProxyHost()));
+        if (proxy.getUserName() != null) {
+            Secret password = proxy.getSecretPassword();
+            String plainPassword = password == null ? "" : password.getPlainText();
+            builder.authenticator(new Authenticator() {
+                @Override
+                protected PasswordAuthentication getPasswordAuthentication() {
+                    if (getRequestorType() == RequestorType.PROXY) {
+                        return new PasswordAuthentication(proxy.getUserName(), plainPassword.toCharArray());
+                    }
+                    return null;
+                }
+            });
+        }
     }
 
     private HttpRequest.BodyPublisher multipartPublisher(String boundary, Path archive) throws IOException {
@@ -399,6 +425,36 @@ final class ZBomRemoteScanner extends MasterToSlaveFileCallable<ZBomScanResult> 
         }
         String compact = value.replace('\r', ' ').replace('\n', ' ');
         return compact.length() <= 2000 ? compact : compact.substring(0, 2000) + "...";
+    }
+
+    private static final class ZBomProxySelector extends ProxySelector {
+        private final String name;
+        private final int port;
+        private final String noProxyHost;
+
+        private ZBomProxySelector(String name, int port, String noProxyHost) {
+            this.name = name;
+            this.port = port;
+            this.noProxyHost = noProxyHost;
+        }
+
+        @Override
+        public List<Proxy> select(URI uri) {
+            if (uri == null || uri.getHost() == null) {
+                return List.of(Proxy.NO_PROXY);
+            }
+            String scheme = uri.getScheme();
+            if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+                return List.of(Proxy.NO_PROXY);
+            }
+            Proxy proxy = ProxyConfiguration.createProxy(uri.getHost().toLowerCase(Locale.ROOT), name, port, noProxyHost);
+            return List.of(proxy);
+        }
+
+        @Override
+        public void connectFailed(URI uri, SocketAddress sa, IOException ioe) {
+            // Ignore.
+        }
     }
 
     private record Archive(Path path, boolean temporary) {}

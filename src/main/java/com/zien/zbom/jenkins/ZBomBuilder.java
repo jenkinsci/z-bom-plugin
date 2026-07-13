@@ -20,6 +20,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Locale;
+import jenkins.model.Jenkins;
 import jenkins.tasks.SimpleBuildStep;
 import org.jenkinsci.Symbol;
 import org.jenkinsci.plugins.plaincredentials.StringCredentials;
@@ -117,6 +118,7 @@ public class ZBomBuilder extends Builder implements SimpleBuildStep {
         ZBomScanConfig config = new ZBomScanConfig();
         config.serverUrl = env.expand(serverUrl).trim();
         config.token = credentials.getSecret();
+        config.proxy = Jenkins.get().proxy;
         config.type = env.expand(type).toLowerCase(Locale.ROOT);
         config.source = ".";
         config.repo = valueOrEnv(env.get("JOB_NAME"), env.get("GIT_URL"), "unknown");
