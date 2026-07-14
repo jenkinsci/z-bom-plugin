@@ -29,6 +29,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.interceptor.RequirePOST;
+import org.kohsuke.stapler.verb.POST;
 
 public class ZBomBuilder extends Builder implements SimpleBuildStep {
     private final String serverUrl;
@@ -232,6 +233,8 @@ public class ZBomBuilder extends Builder implements SimpleBuildStep {
             return model;
         }
 
+        @POST
+        @SuppressWarnings("lgtm[jenkins/no-permission-check]") // Returns only hardcoded option values.
         public ListBoxModel doFillTypeItems(@QueryParameter String type) {
             ListBoxModel model = new ListBoxModel();
             model.add("Source code", "code");
@@ -239,6 +242,8 @@ public class ZBomBuilder extends Builder implements SimpleBuildStep {
             return model;
         }
 
+        @POST
+        @SuppressWarnings("lgtm[jenkins/no-permission-check]") // Returns only hardcoded option values.
         public ListBoxModel doFillFailOnItems(@QueryParameter String failOn) {
             ListBoxModel model = new ListBoxModel();
             model.add("Do not fail the build", "none");
